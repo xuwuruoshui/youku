@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	accessKeyId     = "LTAI5tDD97qVDnHgCJkvHgnb"
-	accessKeySecret = "tINuYLigXqTnnCl0d5svgP6MLj1vxg"
+	accessKeyId     = "xxx"
+	accessKeySecret = "xxx"
 )
 
 type JSONS struct {
