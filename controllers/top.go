@@ -14,7 +14,7 @@ func ChannelTop(ctx *context.Context) {
 		ctx.JSONResp(ReturnError(4001, "必须指定频道"))
 		return
 	}
-	nums, videos, err := models.GetChannelTop(channelId)
+	nums, videos, err := models.RedisGetChannelTop(channelId)
 	if err != nil {
 		ctx.JSONResp(ReturnError(4004, "没有相关内容"))
 		return
@@ -31,7 +31,7 @@ func TypeTop(ctx *context.Context) {
 		ctx.JSONResp(ReturnError(4001, "必须指定频道"))
 		return
 	}
-	nums, videos, err := models.GetTypeTop(typeId)
+	nums, videos, err := models.RedisGetTypeTop(typeId)
 	if err != nil {
 		ctx.JSONResp(ReturnError(4004, "没有相关内容"))
 		return

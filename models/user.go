@@ -2,7 +2,10 @@ package models
 
 import (
 	"github.com/beego/beego/v2/client/orm"
+	"github.com/gomodule/redigo/redis"
+	"strconv"
 	"time"
+	redisClient "youku/service/redis"
 )
 
 type User struct {
@@ -71,5 +74,28 @@ func GetUserInfo(userId int) (UserInfo, error) {
 	o := orm.NewOrm()
 	var u UserInfo
 	err := o.Raw("select id,name,add_time,avatar from user where id = ? limit 1", userId).QueryRow(&u)
+	return u, err
+}
+
+// 增加redis缓存 - 根据用户ID获取用户信息
+func RedisGetUserInfo(uid int) (UserInfo, error) {
+	var u UserInfo
+	conn := redisClient.PoolConnect()
+	defer conn.Close()
+
+	redisKey := "user:id:" + strconv.Itoa(uid)
+	// 判断redis是否存在
+	exists, err := redis.Bool(conn.Do("exists", redisKey))
+	if !exists {
+		o := orm.NewOrm()
+		o.Raw("select id,name,add_time,avatar from user where id = ? limit 1", uid).QueryRow(&u)
+		_, err := conn.Do("hmset", redis.Args{}.Add(redisKey).AddFlat(u)...)
+		if err == nil {
+			conn.Do("expire", redisKey, 86400)
+		}
+	} else {
+		res, _ := redis.Values(conn.Do("hgetall", redisKey))
+		err = redis.ScanStruct(res, &u)
+	}
 	return u, err
 }

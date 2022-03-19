@@ -51,7 +51,7 @@ func List(ctx *context.Context) {
 		commentInfo.Stamp = v.Stamp
 		commentInfo.PraiseCount = v.PraiseCount
 		// 获取用户信息
-		info, err := models.GetUserInfo(v.UserId)
+		info, err := models.RedisGetUserInfo(v.UserId)
 		if err != nil {
 			ctx.JSONResp(ReturnError(4004, "没有相关内容"))
 			return

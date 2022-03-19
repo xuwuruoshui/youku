@@ -126,7 +126,7 @@ func VideoInfo(ctx *context.Context) {
 	if videoId == 0 {
 		ctx.JSONResp(ReturnError(4001, "必须指定频道id"))
 	}
-	video, err := models.GetVideoInfo(videoId)
+	video, err := models.RedisGetVideoInfo(videoId)
 	if err != nil {
 		ctx.JSONResp(ReturnError(4004, "请求数据失败，请稍后重试"))
 		return
@@ -141,7 +141,7 @@ func VideoEpisodesList(ctx *context.Context) {
 	if videoId == 0 {
 		ctx.JSONResp(ReturnError(4001, "必须指定频道id"))
 	}
-	num, episodes, err := models.GetVideoEpisodesList(videoId)
+	num, episodes, err := models.RedisGetVideoEpisodesList(videoId)
 	if err != nil {
 		ctx.JSONResp(ReturnError(4004, "请求数据失败，请稍后重试"))
 		return
