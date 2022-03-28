@@ -55,6 +55,14 @@ func SaveComment(content string, uid, episodesId, videoId int) error {
 		}
 		videoJson, _ := json.Marshal(videoObj)
 		rabbitmq.Publish("", "youku_top", string(videoJson))
+		
+		// 延时添加浏览数(没有浏览字段，就将就使用评论数了,10秒后再添加一次评论数)
+		videoCountObj := map[string]int{
+			"VideoId": videoId,
+			"EpisodesId": episodesId,
+		}
+		videoCountJson, _ := json.Marshal(videoCountObj)
+		rabbitmq.PublicDlx("youku.comment.count",string(videoCountJson))
 	}
 	return err
 }
