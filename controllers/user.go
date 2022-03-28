@@ -90,7 +90,8 @@ func SendMessageDo(ctx *context.Context) {
 	uidConfig := strings.Split(uids, ",")
 	for _, v := range uidConfig {
 		userId, _ := strconv.Atoi(v)
-		models.SendMessageUser(userId, messageId)
+		//models.SendMessageUser(userId, messageId)
+		models.SendMessageUserMq(userId, messageId)
 	}
 	ctx.JSONResp(ReturnSuccess(0, "发送成功", "", 1))
 }

@@ -13,7 +13,7 @@ import (
 
 var Conn *amqp.Connection
 
-func init() {
+func initMQ() {
 	conn, err := amqp.Dial("amqp://root:root@192.168.0.110:5672/")
 	if err != nil {
 		fmt.Println("连接失败: ", err)
@@ -24,6 +24,9 @@ func init() {
 
 // 发布消息
 func Publish(exchange, queueName, body string) (err error) {
+	initMQ()
+	defer Conn.Close()
+	
 	// 1.创建Channel
 	channel, err := Conn.Channel()
 	if err != nil {
@@ -50,10 +53,13 @@ func Publish(exchange, queueName, body string) (err error) {
 	return
 }
 
-type CallBack func(msg string)
+type CallBack func(msg string) error
 
 // 接受消息
 func Consumer(exchange, queueName string, callback CallBack) (err error) {
+	initMQ()
+	defer Conn.Close()
+	
 	// 1.创建Channel
 	channel, err := Conn.Channel()
 	if err != nil {
@@ -80,7 +86,10 @@ func Consumer(exchange, queueName string, callback CallBack) (err error) {
 	for {
 		select {
 		case d := <-msgs:
-			callback(string(d.Body))
+			err := callback(string(d.Body))
+			if err!=nil{
+				break
+			}
 			d.Ack(false)
 		}
 	}
