@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/gomodule/redigo/redis"
 	"strconv"
@@ -230,6 +231,7 @@ func RedisGetChannelTop(channelId int) (int64, []VideoData, error) {
 		res, _ := redis.Values(conn.Do("zrevrange", redisKey, "0", "10", "WITHSCORES"))
 		num := 0
 		for k, v := range res {
+			fmt.Println(string(v.([]byte)))
 			if k&1 == 0 {
 				videoId, _ := strconv.Atoi(string(v.([]byte)))
 				videoInfo, err := RedisGetVideoInfo(videoId)
