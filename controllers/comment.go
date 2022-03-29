@@ -42,25 +42,60 @@ func List(ctx *context.Context) {
 	}
 	var data []CommentInfo
 	var commentInfo CommentInfo
-	for _, v := range comments {
-		commentInfo.Id = v.Id
-		commentInfo.Content = v.Content
-		commentInfo.AddTime = v.AddTime
-		commentInfo.AddTimeTitle = DateFormat(v.AddTime)
-		commentInfo.UserId = v.UserId
-		commentInfo.Stamp = v.Stamp
-		commentInfo.PraiseCount = v.PraiseCount
-		// 获取用户信息
-		info, err := models.RedisGetUserInfo(v.UserId)
-		if err != nil {
-			ctx.JSONResp(ReturnError(4004, "没有相关内容"))
-			return
+	
+	// 获取uid channel
+	uidChan := make(chan int,limit)
+	closeChane := make(chan bool,5)
+	resChan := make(chan models.UserInfo,limit)
+	// 把获取到的uid放到channel中
+	go func() {
+		for _, v := range comments {
+			uidChan <- v.UserId
 		}
-		commentInfo.UserInfo = info
-		data = append(data, commentInfo)
+		close(uidChan)
+	}()
+	// 开5个goroutine处理uidChannel中的信息
+	for i:=0;i<5;i++ {
+		
+		go channelGetUserInfo(uidChan,resChan,closeChane)
+	}
+	// 判断是否执行完成,组合信息
+	go func() {
+		for i:=0;i<5;i++{
+			<-closeChane
+		}
+		close(resChan)
+		close(closeChane)
+	}()
+	
+	userInfoMap := make(map[int]models.UserInfo)
+	for r := range resChan {
+		userInfoMap[r.Id] = r
+	}
+	
+	for _,v := range comments{
+			commentInfo.Id = v.Id
+			commentInfo.Content = v.Content
+			commentInfo.AddTime = v.AddTime
+			commentInfo.AddTimeTitle = DateFormat(v.AddTime)
+			commentInfo.UserId = v.UserId
+			commentInfo.Stamp = v.Stamp
+			commentInfo.PraiseCount = v.PraiseCount
+			commentInfo.UserInfo = userInfoMap[v.UserId]
+			data = append(data, commentInfo)
 	}
 
 	ctx.JSONResp(ReturnSuccess(0, "success", data, num))
+}
+
+func channelGetUserInfo(uidChan chan int,resChan chan models.UserInfo,closeChan chan bool){
+	for uid:= range uidChan{
+		res, err := models.RedisGetUserInfo(uid)
+		if err == nil{
+			resChan <- res
+		}
+	}
+	closeChan<-true
 }
 
 // 保存评论
