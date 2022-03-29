@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	context "github.com/beego/beego/v2/server/web/context"
 	"regexp"
 	"strconv"
@@ -68,6 +69,11 @@ func LoginDo(ctx *context.Context) {
 	ctx.JSONResp(ReturnSuccess(0, "登录成功", map[string]interface{}{"uid": uid, "username": name}, 1))
 }
 
+type SendData struct {
+	UserId int
+	MessageId int64
+}
+
 func SendMessageDo(ctx *context.Context) {
 	uids := ctx.Input.Query("uids")
 	content := ctx.Input.Query("content")
@@ -88,10 +94,40 @@ func SendMessageDo(ctx *context.Context) {
 		return
 	}
 	uidConfig := strings.Split(uids, ",")
-	for _, v := range uidConfig {
-		userId, _ := strconv.Atoi(v)
-		//models.SendMessageUser(userId, messageId)
-		models.SendMessageUserMq(userId, messageId)
+	count := len(uidConfig)
+
+	sendChan := make(chan SendData, count)
+	closeChan := make(chan bool, 5)
+	
+	// 消息发送到channel中
+	go func() {
+		var data SendData
+		for _, v := range uidConfig {
+			userId, _ := strconv.Atoi(v)
+			data.UserId = userId
+			data.MessageId = messageId
+			sendChan<-data
+		}
+		close(sendChan)
+	}()
+	
+	// 多个goroutine从channel中拿消息,发送消息到mq
+	for i:=0;i<5;i++ {
+		go sendMessage(sendChan,closeChan)
 	}
+
+	for i:=0;i<5;i++ {
+		<-closeChan
+	}
+	close(closeChan)
+	
 	ctx.JSONResp(ReturnSuccess(0, "发送成功", "", 1))
+}
+
+func sendMessage(sendChannel chan SendData,closeChanel chan bool){
+	for t := range sendChannel {
+		fmt.Println(t.UserId)
+		models.SendMessageUserMq(t.UserId,t.MessageId)
+	}
+	closeChanel<-true
 }
