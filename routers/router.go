@@ -39,6 +39,8 @@ func videoRouter() {
 	beego.Get("/video/episodes/list", controllers.VideoEpisodesList)
 	beego.Get("/user/video", controllers.UserVideo)
 	beego.Post("/video/save", controllers.VideoSave)
+	beego.Post("/video/send/es", controllers.SendEs)
+	beego.Post("/video/search", controllers.Search)
 
 }
 

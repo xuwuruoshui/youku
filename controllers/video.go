@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"encoding/json"
 	"github.com/beego/beego/v2/server/web/context"
 	"strconv"
 	"youku/models"
+	es "youku/service/elasticsearch"
 )
 
 // 顶部广告
@@ -195,4 +197,84 @@ func VideoSave(ctx *context.Context) {
 		return
 	}
 	ctx.JSONResp(ReturnSuccess(0, "success", nil, 1))
+}
+
+// 导入es脚本
+func SendEs(ctx *context.Context) {
+
+	_, data, _ := models.GetAllList()
+	for _, v := range data {
+		body := es.E{
+			"id":                   v.Id,
+			"title":                v.Title,
+			"sub_title":            v.SubTitle,
+			"add_time":             v.AddTime,
+			"img":                  v.Img,
+			"img1":                 v.Img1,
+			"episodes_count":       v.EpisodesCount,
+			"is_end":               v.IsEnd,
+			"channel_id":           v.ChannelId,
+			"status":               v.Status,
+			"region_id":            v.RegionId,
+			"type_id":              v.TypeId,
+			"episodes_update_time": v.EpisodesUpdateTime,
+			"comment":              v.Comment,
+			"user_id":              v.UserId,
+			"is_recommend":         v.IsRecommend,
+		}
+		es.Add("youku_video", "video-"+strconv.Itoa(v.Id), body)
+	}
+}
+
+// 搜索
+func Search(ctx *context.Context) {
+	keyword := ctx.Input.Query("keyword")
+	limitStr := ctx.Input.Query("limit")
+	offsetStr := ctx.Input.Query("offset")
+
+	limit, _ := strconv.Atoi(limitStr)
+	offset, _ := strconv.Atoi(offsetStr)
+
+	if keyword == "" {
+		ctx.JSONResp(ReturnError(4001, "关键字不能为空"))
+		return
+	}
+
+	if limit == 0 {
+		limit = 12
+	}
+
+	sort := []map[string]string{
+		map[string]string{"id": "desc"},
+	}
+
+	query := es.E{
+		"bool": es.E{
+			"must": es.E{
+				"match": es.E{
+					"title": keyword,
+				},
+			},
+		},
+	}
+
+	res, err := es.Search("youku_video", query, offset, limit, sort)
+	if err!=nil{
+		ctx.JSONResp(ReturnError(4002, "查询错误"))
+		return
+	}
+	total := res.Hits.Total.Value
+	var data []models.Video
+	for _, v := range res.Hits.Hits {
+		var itemData models.Video
+		err := json.Unmarshal(v.Source,&itemData)
+		if err==nil{
+			data = append(data,itemData)
+		}
+	}
+	if total<=0{
+		ctx.JSONResp(ReturnError(4004, "没有相关内容"))
+		return
+	}
+	ctx.JSONResp(ReturnSuccess(0,"success",data,int64(total)))
 }
