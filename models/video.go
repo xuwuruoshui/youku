@@ -7,6 +7,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"strconv"
 	"time"
+	es "youku/service/elasticsearch"
 	redisClient "youku/service/redis"
 )
 
@@ -110,6 +111,63 @@ func GetChannelVideoList(channelId, regionId, typeId, offset, limit int, end, so
 	_, err := qs.Values(&videos, "id", "title", "sub_title", "add_time", "img", "img1",
 		"episodes_count", "is_end")
 	return nums, videos, err
+}
+
+
+func GetChannelVideoListEs(channelId, regionId, typeId, offset, limit int, end, sort string) (int64, []Video, error){
+
+	var must []es.E
+	bools := es.E{}
+	query := es.E{}
+	must = append(must,es.E{"term":es.E{
+		"channel_id": channelId,
+	}})
+	must = append(must,es.E{"term":es.E{
+		"status":1,
+	}})
+
+	if regionId > 0 {
+		must = append(must,es.E{"term":es.E{
+			"region_id":regionId,
+		}})
+	}
+	if typeId > 0 {
+		must = append(must,es.E{"term":es.E{
+			"type_id":typeId,
+		}})
+	}
+
+	must = append(must,es.E{"term":es.E{
+		"is_end":1,
+	}})
+	if end == "n" {
+		must = append(must,es.E{"term":es.E{
+			"is_end":0,
+		}})
+	}
+	
+	bools["must"] = must
+	query["bool"] = bools
+
+	sortData := []map[string]string{{"add_time":"desc"}}
+	if sort == "episodesUpdateTime" {
+		sortData = []map[string]string{{"episodes_update_time":"desc"}}
+	} else if sort == "comment" {
+		sortData = []map[string]string{{"comment": "desc"}}
+	}
+	res, err := es.Search("youku_video", query, offset, limit, sortData)
+	if err!=nil{
+		return 0, nil, err
+	}
+	var data []Video
+	for _, v := range res.Hits.Hits {
+		var dataItem Video
+		err := json.Unmarshal(v.Source, &dataItem)
+		if err==nil{
+			data = append(data,dataItem)
+		}
+	}
+	return int64(res.Hits.Total.Value),data,err
 }
 
 // 视频信息episodes

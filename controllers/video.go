@@ -113,7 +113,7 @@ func ChannelVideo(ctx *context.Context) {
 		// 默认12条
 		limit = 6
 	}
-	nums, videos, err := models.GetChannelVideoList(channelId, regionId, typeId, offset, limit, end, sort)
+	nums, videos, err := models.GetChannelVideoListEs(channelId, regionId, typeId, offset, limit, end, sort)
 	if err != nil {
 		ctx.JSONResp(ReturnError(4004, "没有相关内容"))
 		return
